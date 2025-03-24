@@ -24,30 +24,42 @@ jobs:
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/node-app:latest
 
-      - name: Add EC2 Host to Known Hosts (Fix SSH Issues)
-        run: 
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+      - name: Decode SSH Key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" | base64 --decode > private_key.pem
+          chmod 600 private_key.pem
 
       - name: SSH into EC2 and Deploy
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
-          key: ${{ secrets.EC2_SSH_KEY }}
+          key: "${{ secrets.EC2_SSH_KEY }}"
           script: |
+            # Install Docker if not installed
+            if ! [ -x "$(command -v docker)" ]; then
+              sudo yum update -y
+              sudo amazon-linux-extras enable docker
+              sudo yum install -y docker
+              sudo systemctl start docker
+              sudo systemctl enable docker
+            fi
+
             # Ensure Docker is running
             sudo systemctl start docker || true
 
-            # Fix Docker permissions issue
+            # Fix Docker permissions
+            sudo usermod -aG docker ec2-user
             sudo chmod 666 /var/run/docker.sock || true
 
-            # Stop and remove existing container (force to avoid errors)
-            docker stop node-app || true
-            docker rm -f node-app || true
+            # Clean up existing container
+            sudo docker stop node-app || true
+            sudo docker rm -f node-app || true
 
             # Pull latest image
-            docker pull ${{ secrets.DOCKER_USERNAME }}/node-app:latest
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/node-app:latest
 
-            # Run the container on port 3000
-            docker run -d --name node-app -p 5000:5000 ${{ secrets.DOCKER_USERNAME }}/node-app:latest
+            # Run the container on port 5000
+            sudo docker run -d --name node-app -p 5000:5000 ${{ secrets.DOCKER_USERNAME }}/node-app:latest
+
+            echo "Deployment successful"
