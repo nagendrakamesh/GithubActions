@@ -4,7 +4,7 @@ const app = express();
 const port = 5000;
 
 app.get('/', (req, res) => {
-    res.send("Testing app for implementation of Ci/Cd pipeline using github actions");
+    res.send("Testing app for implementation of Ci/Cd pipeline using github actions with a change to check the build");
 })
 
 app.listen(port, () => {
