@@ -25,7 +25,9 @@ jobs:
           docker push ${{ secrets.DOCKER_USERNAME }}/node-app:latest
 
       - name: Add EC2 Host to Known Hosts (Fix SSH Issues)
-        run: ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+        run: 
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
       - name: SSH into EC2 and Deploy
         uses: appleboy/ssh-action@v0.1.10
@@ -48,4 +50,4 @@ jobs:
             docker pull ${{ secrets.DOCKER_USERNAME }}/node-app:latest
 
             # Run the container on port 3000
-            docker run -d --name node-app -p 3000:3000 ${{ secrets.DOCKER_USERNAME }}/node-app:latest
+            docker run -d --name node-app -p 5000:5000 ${{ secrets.DOCKER_USERNAME }}/node-app:latest
