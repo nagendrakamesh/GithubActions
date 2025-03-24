@@ -24,21 +24,15 @@ jobs:
         run: |
           docker push ${{ secrets.DOCKER_USERNAME }}/node-app:latest
 
-      - name: Decode SSH Key
-        run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" | base64 --decode > private_key.pem
-          chmod 600 private_key.pem
-
       - name: SSH into EC2 and Deploy
         uses: appleboy/ssh-action@v0.1.10
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
-          key: "${{ secrets.EC2_SSH_KEY }}"
+          key: "${{ secrets.EC2_SSH_KEY }}"   # Use the raw PEM key directly
           script: |
-            # Install Docker if not installed
+            # Ensure Docker is installed
             if ! [ -x "$(command -v docker)" ]; then
-              sudo yum update -y
               sudo amazon-linux-extras enable docker
               sudo yum install -y docker
               sudo systemctl start docker
@@ -48,15 +42,15 @@ jobs:
             # Ensure Docker is running
             sudo systemctl start docker || true
 
-            # Fix Docker permissions
+            # Fix Docker permissions issue
             sudo usermod -aG docker ec2-user
             sudo chmod 666 /var/run/docker.sock || true
 
-            # Clean up existing container
+            # Stop and remove existing container
             sudo docker stop node-app || true
             sudo docker rm -f node-app || true
 
-            # Pull latest image
+            # Pull latest Docker image
             sudo docker pull ${{ secrets.DOCKER_USERNAME }}/node-app:latest
 
             # Run the container on port 5000
